@@ -62,7 +62,7 @@ class PurchaseOrderService {
   /// Confirmar una orden de compra (cambiar de DRAFT a ORDERED)
   Future<PurchaseOrder> confirm(String id) async {
     try {
-      final response = await _http.post('/purchase-orders/$id/order');
+      final response = await _http.post('/purchase-orders/$id/order', body: {});
       return PurchaseOrder.fromJson(response['data'] as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Error al confirmar orden de compra: $e');
@@ -70,7 +70,22 @@ class PurchaseOrderService {
   }
 
   /// Recibir una orden de compra
-  Future<PurchaseOrder> receive(String id, {
+  /// El backend usa las allocaciones guardadas al crear la orden
+  Future<PurchaseOrder> receive(String id) async {
+    try {
+      final response = await _http.post(
+        '/purchase-orders/$id/receive',
+        body: {}, // Enviar objeto vacío para evitar errores de validación
+      );
+      return PurchaseOrder.fromJson(response['data'] as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception('Error al recibir orden de compra: $e');
+    }
+  }
+
+  /// Recibir orden manualmente (para órdenes viejas sin allocations guardadas)
+  Future<PurchaseOrder> receiveManual(
+    String id, {
     required String warehouseId,
     required Map<String, double> receivedQuantities,
   }) async {
@@ -84,7 +99,7 @@ class PurchaseOrderService {
       );
       return PurchaseOrder.fromJson(response['data'] as Map<String, dynamic>);
     } catch (e) {
-      throw Exception('Error al recibir orden de compra: $e');
+      throw Exception('Error al recibir orden manualmente: $e');
     }
   }
 }

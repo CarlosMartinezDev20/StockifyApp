@@ -101,7 +101,7 @@ class NotificationService {
     required int minimumStock,
   }) async {
     await showNotification(
-      id: currentStock.hashCode,
+      id: productName.hashCode,
       title: '⚠️ Stock Bajo',
       body: '$productName tiene solo $currentStock unidades (mínimo: $minimumStock)',
       payload: 'low_stock:$productName',

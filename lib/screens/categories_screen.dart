@@ -195,36 +195,40 @@ class _CategoriesScreenState extends State<CategoriesScreen> with PermissionsMix
         padding: const EdgeInsets.all(16),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
-          return _CategoryCard(
-            category: _categories[index],
-            index: index,
-            onTap: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => CategoryDetailScreen(
-                    categoryId: _categories[index].id,
+          final category = _categories[index];
+          return RepaintBoundary(
+            key: ValueKey('category_${category.id}'),
+            child: _CategoryCard(
+              category: category,
+              index: index,
+              onTap: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => CategoryDetailScreen(
+                      categoryId: category.id,
+                    ),
                   ),
-                ),
-              );
+                );
+                
+                if (result == true) {
+                  _loadCategories();
+                }
+              },
+              onEdit: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => CategoryFormScreen(
+                      category: category,
+                    ),
+                  ),
+                );
               
               if (result == true) {
                 _loadCategories();
               }
             },
-            onEdit: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => CategoryFormScreen(
-                    category: _categories[index],
-                  ),
-                ),
-              );
-              
-              if (result == true) {
-                _loadCategories();
-              }
-            },
-            onDelete: () => _deleteCategory(_categories[index]),
+            onDelete: () => _deleteCategory(category),
+            ),
           );
         },
       ),
@@ -232,7 +236,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with PermissionsMix
   }
 }
 
-class _CategoryCard extends StatefulWidget {
+class _CategoryCard extends StatelessWidget {
   final Category category;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -248,102 +252,45 @@ class _CategoryCard extends StatefulWidget {
   });
 
   @override
-  State<_CategoryCard> createState() => _CategoryCardState();
-}
-
-class _CategoryCardState extends State<_CategoryCard> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 350),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    // Limitar delay máximo a 150ms para listas grandes
-    final delayMs = (15 * widget.index).clamp(0, 150);
-    Future.delayed(Duration(milliseconds: delayMs), () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Hero(
-          tag: 'category_${widget.category.id}',
-          child: Material(
-            color: Colors.transparent,
-            child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: InkWell(
-                onTap: widget.onTap,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutBack,
-                        builder: (context, value, child) {
-                          return Transform.scale(
-                            scale: value,
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.category,
-                                color: colorScheme.onPrimaryContainer,
-                                size: 28,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.category.name,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.category,
+                  color: colorScheme.onPrimaryContainer,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category.name,
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                            if (widget.category.description != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.category.description!,
+                    ),
+                    if (category.description != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        category.description!,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -351,45 +298,41 @@ class _CategoryCardState extends State<_CategoryCard> with SingleTickerProviderS
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
-                          ],
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            widget.onEdit();
-                          } else if (value == 'delete') {
-                            widget.onDelete();
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 20),
-                                SizedBox(width: 8),
-                                Text('Editar'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, size: 20, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Eliminar', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-            ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    onEdit();
+                  } else if (value == 'delete') {
+                    onDelete();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 20),
+                        SizedBox(width: 8),
+                        Text('Editar'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 20, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Eliminar', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

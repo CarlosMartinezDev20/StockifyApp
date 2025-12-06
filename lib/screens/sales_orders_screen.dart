@@ -15,7 +15,6 @@ class SalesOrdersScreen extends StatefulWidget {
 
 class _SalesOrdersScreenState extends State<SalesOrdersScreen> with PermissionsMixin {
   final SalesOrderService _salesOrderService = SalesOrderService();
-  final WarehouseService _warehouseService = WarehouseService();
   List<SalesOrder> _orders = [];
   List<SalesOrder> _filteredOrders = [];
   bool _isLoading = true;
@@ -130,92 +129,32 @@ class _SalesOrdersScreenState extends State<SalesOrdersScreen> with PermissionsM
   }
 
   Future<void> _fulfillOrder(SalesOrder order) async {
-    // Cargar almacenes
-    List<Warehouse> warehouses;
-    try {
-      warehouses = await _warehouseService.getAll();
-      if (warehouses.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay almacenes disponibles'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar almacenes: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Mostrar diálogo para seleccionar almacén
-    String? selectedWarehouseId;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Completar Orden'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Orden #${order.id.substring(0, 8)}'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedWarehouseId,
-                decoration: const InputDecoration(
-                  labelText: 'Almacén',
-                  border: OutlineInputBorder(),
-                ),
-                items: warehouses.map((warehouse) {
-                  return DropdownMenuItem(
-                    // ignore: deprecated_member_use
-                    value: warehouse.id,
-                    child: Text(warehouse.name),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedWarehouseId = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'El inventario se descontará automáticamente.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: selectedWarehouseId == null
-                  ? null
-                  : () => Navigator.of(context).pop(true),
-              child: const Text('Completar'),
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const Text('Completar Orden'),
+        content: Text(
+          '¿Confirmas que deseas completar la orden #${order.id.substring(0, 8)}?\n\n'
+          'El inventario se descontará de los almacenes especificados al crear la orden.',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Completar'),
+          ),
+        ],
       ),
     );
 
-    if (confirmed != true || selectedWarehouseId == null) return;
+    if (confirmed != true) return;
 
     try {
-      await _salesOrderService.fulfill(order.id, selectedWarehouseId!);
+      // No se pasa warehouseId porque las allocations ya están guardadas en el backend
+      await _salesOrderService.fulfill(order.id);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -466,7 +405,7 @@ class _SalesOrdersScreenState extends State<SalesOrdersScreen> with PermissionsM
   }
 }
 
-class _SalesOrderCard extends StatefulWidget {
+class _SalesOrderCard extends StatelessWidget {
   final SalesOrder order;
   final VoidCallback onTap;
   final VoidCallback onConfirm;
@@ -482,62 +421,15 @@ class _SalesOrderCard extends StatefulWidget {
   });
 
   @override
-  State<_SalesOrderCard> createState() => _SalesOrderCardState();
-}
-
-class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(-0.3, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    // Limitar delay máximo a 200ms para listas grandes
-    final delayMs = (20 * widget.index).clamp(0, 200);
-    Future.delayed(Duration(milliseconds: delayMs), () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final statusColor = _getStatusColor(context);
 
-    return SlideTransition(
-      position: _slideAnimation,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Hero(
-          tag: 'order_${widget.order.id}',
-          child: Material(
-            color: Colors.transparent,
-            child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: InkWell(
-                onTap: widget.onTap,
-                borderRadius: BorderRadius.circular(12),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -562,14 +454,14 @@ class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProvi
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Orden #${widget.order.id.substring(0, 8)}',
+                          'Orden #${order.id.substring(0, 8)}',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.order.customerName ?? 'Cliente ID: ${widget.order.customerId.substring(0, 8)}',
+                          order.customerName ?? 'Cliente ID: ${order.customerId.substring(0, 8)}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -588,7 +480,7 @@ class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProvi
                       border: Border.all(color: statusColor),
                     ),
                     child: Text(
-                      _getStatusText(widget.order.status),
+                      _getStatusText(order.status),
                       style: TextStyle(
                         color: statusColor,
                         fontWeight: FontWeight.bold,
@@ -608,7 +500,7 @@ class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProvi
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDate(widget.order.createdAt),
+                    _formatDate(order.createdAt),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const Spacer(),
@@ -619,18 +511,18 @@ class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProvi
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${widget.order.items.length} item(s)',
+                    '${order.items.length} item(s)',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
-              if (widget.order.status.toUpperCase() == 'DRAFT') ...[
+              if (order.status.toUpperCase() == 'DRAFT') ...[
                 const Divider(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     FilledButton.icon(
-                      onPressed: widget.onConfirm,
+                      onPressed: onConfirm,
                       icon: const Icon(Icons.check, size: 18),
                       label: const Text('Confirmar'),
                       style: FilledButton.styleFrom(
@@ -640,13 +532,13 @@ class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProvi
                   ],
                 ),
               ],
-              if (widget.order.status.toUpperCase() == 'CONFIRMED') ...[
+              if (order.status.toUpperCase() == 'CONFIRMED') ...[
                 const Divider(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     FilledButton.icon(
-                      onPressed: widget.onFulfill,
+                      onPressed: onFulfill,
                       icon: const Icon(Icons.check_circle, size: 18),
                       label: const Text('Completar'),
                       style: FilledButton.styleFrom(
@@ -659,17 +551,13 @@ class _SalesOrderCardState extends State<_SalesOrderCard> with SingleTickerProvi
             ],
           ),
         ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
 
   Color _getStatusColor(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    switch (widget.order.status.toUpperCase()) {
+    switch (order.status.toUpperCase()) {
       case 'DRAFT':
         return Colors.grey;
       case 'CONFIRMED':

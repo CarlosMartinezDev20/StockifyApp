@@ -72,13 +72,15 @@ class StockMonitorService {
 
       // Limpiar productos que ya no tienen stock bajo
       _notifiedProducts.removeWhere((id) {
-        final product = products.firstWhere(
-          (p) => p.id == id,
-          orElse: () => products.first,
-        );
-        final currentStock = product.stockTotal ?? 0;
-        final minimumStock = product.minStock ?? 0;
-        return currentStock >= minimumStock;
+        try {
+          final product = products.firstWhere((p) => p.id == id);
+          final currentStock = product.stockTotal ?? 0;
+          final minimumStock = product.minStock ?? 0;
+          return currentStock >= minimumStock;
+        } catch (e) {
+          // Si el producto ya no existe, removerlo de notificados
+          return true;
+        }
       });
       _saveNotifiedProducts();
       

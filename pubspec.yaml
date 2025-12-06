@@ -54,14 +54,10 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: true
-  # Icono normal para iOS y Android legacy
+  ios: false
   image_path: "assets/icon/app_icon.png"
-  # Adaptive Icons para Android 8.0+
-  adaptive_icon_background: "#4A90E2"  # Azul moderno
-  adaptive_icon_foreground: "assets/icon/foreground.png"
-  # Material You - versión monocromática
-  adaptive_icon_monochrome: "assets/icon/monochrome.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

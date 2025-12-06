@@ -285,7 +285,7 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 }
 
-class _UserCard extends StatefulWidget {
+class _UserCard extends StatelessWidget {
   final User user;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -302,48 +302,9 @@ class _UserCard extends StatefulWidget {
     required this.isCurrentUser,
   });
 
-  @override
-  State<_UserCard> createState() => _UserCardState();
-}
-
-class _UserCardState extends State<_UserCard> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 350),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    // Limitar delay máximo a 150ms para listas grandes
-    final delayMs = (15 * widget.index).clamp(0, 150);
-    Future.delayed(Duration(milliseconds: delayMs), () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   Color _getRoleColor(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    switch (widget.user.role.toUpperCase()) {
+    switch (user.role.toUpperCase()) {
       case 'ADMIN':
         return colorScheme.error;
       case 'MANAGER':
@@ -356,7 +317,7 @@ class _UserCardState extends State<_UserCard> with SingleTickerProviderStateMixi
   }
 
   IconData _getRoleIcon() {
-    switch (widget.user.role.toUpperCase()) {
+    switch (user.role.toUpperCase()) {
       case 'ADMIN':
         return Icons.admin_panel_settings;
       case 'MANAGER':
@@ -369,7 +330,7 @@ class _UserCardState extends State<_UserCard> with SingleTickerProviderStateMixi
   }
 
   String _getRoleText() {
-    switch (widget.user.role.toUpperCase()) {
+    switch (user.role.toUpperCase()) {
       case 'ADMIN':
         return 'Administrador';
       case 'MANAGER':
@@ -377,7 +338,7 @@ class _UserCardState extends State<_UserCard> with SingleTickerProviderStateMixi
       case 'CLERK':
         return 'Empleado';
       default:
-        return widget.user.role;
+        return user.role;
     }
   }
 
@@ -386,149 +347,127 @@ class _UserCardState extends State<_UserCard> with SingleTickerProviderStateMixi
     final colorScheme = Theme.of(context).colorScheme;
     final roleColor = _getRoleColor(context);
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Hero(
-          tag: 'user_${widget.user.id}',
-          child: Material(
-            color: Colors.transparent,
-            child: Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: InkWell(
-                onTap: widget.onTap,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutBack,
-                        builder: (context, value, child) {
-                          return Transform.scale(
-                            scale: value,
-                            child: CircleAvatar(
-                              radius: 28,
-                              backgroundColor: roleColor.withValues(alpha: 0.2),
-                              child: Icon(
-                                _getRoleIcon(),
-                                color: roleColor,
-                                size: 28,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    widget.user.fullName,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (widget.isCurrentUser) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'TÚ',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: colorScheme.onPrimaryContainer,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.user.email,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: roleColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: roleColor.withValues(alpha: 0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                _getRoleText(),
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: roleColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!widget.isCurrentUser)
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              widget.onEdit();
-                            } else if (value == 'delete') {
-                              widget.onDelete();
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Editar'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete, size: 20, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Eliminar', style: TextStyle(color: Colors.red)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: roleColor.withValues(alpha: 0.2),
+                child: Icon(
+                  _getRoleIcon(),
+                  color: roleColor,
+                  size: 28,
                 ),
               ),
-            ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            user.fullName,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isCurrentUser) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'TÚ',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user.email,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: roleColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: roleColor.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        _getRoleText(),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: roleColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isCurrentUser)
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      onEdit();
+                    } else if (value == 'delete') {
+                      onDelete();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 8),
+                          Text('Editar'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Eliminar', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
         ),
       ),

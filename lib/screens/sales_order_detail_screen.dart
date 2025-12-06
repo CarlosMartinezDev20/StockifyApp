@@ -17,7 +17,6 @@ class SalesOrderDetailScreen extends StatefulWidget {
 
 class _SalesOrderDetailScreenState extends State<SalesOrderDetailScreen> {
   final SalesOrderService _salesOrderService = SalesOrderService();
-  final WarehouseService _warehouseService = WarehouseService();
   SalesOrder? _order;
   bool _isLoading = true;
   bool _isConfirming = false;
@@ -106,94 +105,37 @@ class _SalesOrderDetailScreenState extends State<SalesOrderDetailScreen> {
   Future<void> _fulfillOrder() async {
     if (_order == null) return;
 
-    // Cargar almacenes
-    List<Warehouse> warehouses;
-    try {
-      warehouses = await _warehouseService.getAll();
-      if (warehouses.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay almacenes disponibles'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar almacenes: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Mostrar diálogo para seleccionar almacén
-    String? selectedWarehouseId;
+    // Nota: fulfill() sin warehouseId solo funciona si la orden tiene allocations pendientes
+    // en el backend. Si no, necesitaremos lógica adicional para manejar ese caso.
+    
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Completar Orden'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Selecciona el almacén desde donde se enviará la mercancía:'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedWarehouseId,
-                decoration: const InputDecoration(
-                  labelText: 'Almacén',
-                  border: OutlineInputBorder(),
-                ),
-                items: warehouses.map((warehouse) {
-                  return DropdownMenuItem(
-                    // ignore: deprecated_member_use
-                    value: warehouse.id,
-                    child: Text(warehouse.name),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedWarehouseId = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'El inventario se descontará automáticamente.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: selectedWarehouseId == null
-                  ? null
-                  : () => Navigator.of(context).pop(true),
-              child: const Text('Completar'),
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const Text('Completar Orden'),
+        content: const Text(
+          '¿Confirmas que deseas completar esta orden de venta?\n\n'
+          'El inventario se descontará de los almacenes especificados al crear la orden.',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Completar'),
+          ),
+        ],
       ),
     );
 
-    if (confirmed != true || selectedWarehouseId == null) return;
+    if (confirmed != true) return;
 
     setState(() => _isFulfilling = true);
 
     try {
-      await _salesOrderService.fulfill(widget.orderId, selectedWarehouseId!);
+      // No se pasa warehouseId porque las allocations ya están en el backend
+      await _salesOrderService.fulfill(widget.orderId);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -207,10 +149,13 @@ class _SalesOrderDetailScreenState extends State<SalesOrderDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isFulfilling = false);
+        
+        final errorMessage = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al completar orden: $e'),
+            content: Text('Error: $errorMessage'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

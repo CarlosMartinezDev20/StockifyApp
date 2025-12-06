@@ -60,7 +60,7 @@ class SalesOrderService {
   /// Confirmar una orden de venta
   Future<SalesOrder> confirm(String id) async {
     try {
-      final response = await _http.post('/sales-orders/$id/confirm');
+      final response = await _http.post('/sales-orders/$id/confirm', body: {});
       return SalesOrder.fromJson(response['data'] as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Error al confirmar orden: $e');
@@ -68,11 +68,16 @@ class SalesOrderService {
   }
 
   /// Cumplir una orden de venta (fulfill)
-  Future<SalesOrder> fulfill(String id, String warehouseId) async {
+  /// Si no se especifica warehouseId, usa las allocaciones definidas al crear la orden
+  Future<SalesOrder> fulfill(String id, {String? warehouseId}) async {
     try {
+      final Map<String, dynamic> body = warehouseId != null 
+          ? {'warehouseId': warehouseId} 
+          : {};
+      
       final response = await _http.post(
         '/sales-orders/$id/fulfill',
-        body: {'warehouseId': warehouseId},
+        body: body,
       );
 
       return SalesOrder.fromJson(response['data'] as Map<String, dynamic>);

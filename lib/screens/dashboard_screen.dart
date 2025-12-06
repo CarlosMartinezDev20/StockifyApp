@@ -30,11 +30,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _lowStockCount = 0;
   List<Product> _lowStockProducts = [];
 
-  // Pantallas principales del BottomNavigationBar
+  // Pantallas principales - ahora incluye todas las del drawer
   final List<Widget> _mainScreens = [
-    const DashboardHome(),
-    const ProductsScreen(),
-    const SalesOrdersScreen(),
+    const DashboardHome(),      // 0
+    const ProductsScreen(),     // 1
+    const SalesOrdersScreen(),  // 2
+    const CategoriesScreen(),   // 3
+    const InventoryScreen(),    // 4
+    const WarehousesScreen(),   // 5
+    const PurchaseOrdersScreen(), // 6
+    const StockMovementsScreen(), // 7
+    const ClientsScreen(),      // 8
+    const SuppliersScreen(),    // 9
+    const UsersScreen(),        // 10
   ];
 
   @override
@@ -482,40 +490,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ListTile(
               leading: const Icon(Icons.category_outlined),
               title: const Text('Categorías'),
+              selected: _selectedIndex == 3,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CategoriesScreen(),
-                  ),
-                );
+                _onItemTapped(3);
               },
             ),
             ListTile(
               leading: const Icon(Icons.warehouse_outlined),
               title: const Text('Inventario'),
+              selected: _selectedIndex == 4,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const InventoryScreen(),
-                  ),
-                );
+                _onItemTapped(4);
               },
             ),
             ListTile(
               leading: const Icon(Icons.store),
               title: const Text('Almacenes'),
+              selected: _selectedIndex == 5,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WarehousesScreen(),
-                  ),
-                );
+                _onItemTapped(5);
               },
             ),
 
@@ -543,27 +539,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ListTile(
               leading: const Icon(Icons.shopping_bag_outlined),
               title: const Text('Órdenes de Compra'),
+              selected: _selectedIndex == 6,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PurchaseOrdersScreen(),
-                  ),
-                );
+                _onItemTapped(6);
               },
             ),
             ListTile(
               leading: const Icon(Icons.swap_horiz),
               title: const Text('Movimientos de Stock'),
+              selected: _selectedIndex == 7,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const StockMovementsScreen(),
-                  ),
-                );
+                _onItemTapped(7);
               },
             ),
 
@@ -582,27 +570,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ListTile(
               leading: const Icon(Icons.people_outlined),
               title: const Text('Clientes'),
+              selected: _selectedIndex == 8,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ClientsScreen(),
-                  ),
-                );
+                _onItemTapped(8);
               },
             ),
             ListTile(
               leading: const Icon(Icons.business_outlined),
               title: const Text('Proveedores'),
+              selected: _selectedIndex == 9,
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SuppliersScreen(),
-                  ),
-                );
+                _onItemTapped(9);
               },
             ),
 
@@ -622,6 +602,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ListTile(
                 leading: const Icon(Icons.people),
                 title: const Text('Usuarios'),
+                selected: _selectedIndex == 10,
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -639,12 +620,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const UsersScreen(),
-                    ),
-                  );
+                  _onItemTapped(10);
                 },
               ),
             ],
@@ -656,7 +632,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: _mainScreens,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: _selectedIndex <= 2 ? _selectedIndex : 0,
         onDestinationSelected: _onItemTapped,
         destinations: const [
           NavigationDestination(
@@ -687,6 +663,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Productos';
       case 2:
         return 'Órdenes de Venta';
+      case 3:
+        return 'Categorías';
+      case 4:
+        return 'Inventario';
+      case 5:
+        return 'Almacenes';
+      case 6:
+        return 'Órdenes de Compra';
+      case 7:
+        return 'Movimientos de Stock';
+      case 8:
+        return 'Clientes';
+      case 9:
+        return 'Proveedores';
+      case 10:
+        return 'Usuarios';
       default:
         return 'Inventory App';
     }
@@ -750,6 +742,7 @@ class _DashboardHomeState extends State<DashboardHome> with TickerProviderStateM
   }
 
   Future<void> _loadDashboardData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     
     try {
@@ -758,6 +751,8 @@ class _DashboardHomeState extends State<DashboardHome> with TickerProviderStateM
       final salesOrders = await _salesOrderService.getAll();
       final purchaseOrders = await _purchaseOrderService.getAll();
       final customers = await _customerService.getAll();
+
+      if (!mounted) return;
 
       // Calcular estadísticas - productos con stock bajo del mínimo
       final lowStock = products.where((p) {
@@ -796,15 +791,24 @@ class _DashboardHomeState extends State<DashboardHome> with TickerProviderStateM
       });
 
       // Iniciar animaciones
-      _fadeController.forward();
-      _slideController.forward();
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar datos: $e')),
-        );
+        _fadeController.forward();
+        _slideController.forward();
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cargar dashboard: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          action: SnackBarAction(
+            label: 'Reintentar',
+            textColor: Colors.white,
+            onPressed: _loadDashboardData,
+          ),
+        ),
+      );
     }
   }
 

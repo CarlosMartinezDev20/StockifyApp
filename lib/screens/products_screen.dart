@@ -266,9 +266,8 @@ class _ProductsScreenState extends State<ProductsScreen> with PermissionsMixin {
         itemCount: _filteredProducts.length,
         itemBuilder: (context, index) {
           final product = _filteredProducts[index];
-          return RepaintBoundary(
-            key: ValueKey('product_${product.id}'),
-            child: _ProductCard(product: product, index: index),
+          return _ProductCard(
+            product: product,
           );
         },
       ),
@@ -276,78 +275,29 @@ class _ProductsScreenState extends State<ProductsScreen> with PermissionsMixin {
   }
 }
 
-class _ProductCard extends StatefulWidget {
+class _ProductCard extends StatelessWidget {
   final Product product;
-  final int index;
 
-  const _ProductCard({required this.product, required this.index});
-
-  @override
-  State<_ProductCard> createState() => _ProductCardState();
-}
-
-class _ProductCardState extends State<_ProductCard> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(_controller);
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.1, 0),
-      end: Offset.zero,
-    ).animate(_controller);
-
-    // Limitar delay máximo a 100ms para mejor fluidez
-    final delayMs = (10 * widget.index).clamp(0, 100);
-    Future.delayed(Duration(milliseconds: delayMs), () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  const _ProductCard({required this.product});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final stockColor = _getStockColor(context);
 
-    return RepaintBoundary(
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Hero(
-          tag: 'product_${widget.product.id}',
-          child: Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        ProductDetailScreen(productId: widget.product.id),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ProductDetailScreen(productId: product.id),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -370,14 +320,14 @@ class _ProductCardState extends State<_ProductCard> with SingleTickerProviderSta
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.product.name,
+                          product.name,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'SKU: ${widget.product.sku}',
+                          'SKU: ${product.sku}',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -385,59 +335,49 @@ class _ProductCardState extends State<_ProductCard> with SingleTickerProviderSta
                       ],
                     ),
                   ),
-                  if (widget.product.stockTotal != null)
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: stockColor.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: stockColor),
-                            ),
-                            child: Text(
-                              '${widget.product.stockTotal!.toInt()}',
-                              style: TextStyle(
-                                color: stockColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                  if (product.stockTotal != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: stockColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: stockColor),
+                      ),
+                      child: Text(
+                        '${product.stockTotal!.toInt()}',
+                        style: TextStyle(
+                          color: stockColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                 ],
               ),
-              if (widget.product.categoryName != null) ...[
+              if (product.categoryName != null) ...[
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   children: [
                     Chip(
-                      label: Text(widget.product.categoryName!),
+                      label: Text(product.categoryName!),
                       avatar: const Icon(Icons.category, size: 16),
                       visualDensity: VisualDensity.compact,
                     ),
                     Chip(
-                      label: Text(widget.product.unit),
+                      label: Text(product.unit),
                       avatar: const Icon(Icons.straighten, size: 16),
                       visualDensity: VisualDensity.compact,
                     ),
                   ],
                 ),
               ],
-              if (widget.product.description != null) ...[
+              if (product.description != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  widget.product.description!,
+                  product.description!,
                   style: Theme.of(context).textTheme.bodySmall,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -445,21 +385,15 @@ class _ProductCardState extends State<_ProductCard> with SingleTickerProviderSta
               ],
             ],
           ),
-        ),
-      ),
-          ),
-        ),
-      ),
-      ),
+              ),
+            ),
     );
   }
 
   Color _getStockColor(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final stock = widget.product.stockTotal ?? 0;
-    final minStock = widget.product.minStock ?? 10;
-
-    if (stock == 0) {
+    final stock = product.stockTotal ?? 0;
+    final minStock = product.minStock ?? 10;    if (stock == 0) {
       return colorScheme.error;
     } else if (stock <= minStock) {
       return Colors.orange;

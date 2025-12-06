@@ -17,7 +17,6 @@ class PurchaseOrderDetailScreen extends StatefulWidget {
 
 class _PurchaseOrderDetailScreenState extends State<PurchaseOrderDetailScreen> {
   final PurchaseOrderService _purchaseOrderService = PurchaseOrderService();
-  final WarehouseService _warehouseService = WarehouseService();
   PurchaseOrder? _order;
   bool _isLoading = true;
   bool _isReceiving = false;
@@ -106,104 +105,34 @@ class _PurchaseOrderDetailScreenState extends State<PurchaseOrderDetailScreen> {
   Future<void> _receiveOrder() async {
     if (_order == null) return;
 
-    // Cargar almacenes
-    List<Warehouse> warehouses;
-    try {
-      warehouses = await _warehouseService.getAll();
-      if (warehouses.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay almacenes disponibles'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cargar almacenes: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Mostrar diálogo para seleccionar almacén
-    String? selectedWarehouseId;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Recibir Mercancía'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Selecciona el almacén donde se recibirá la mercancía:'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedWarehouseId,
-                decoration: const InputDecoration(
-                  labelText: 'Almacén',
-                  border: OutlineInputBorder(),
-                ),
-                items: warehouses.map((warehouse) {
-                  return DropdownMenuItem(
-                    // ignore: deprecated_member_use
-                    value: warehouse.id,
-                    child: Text(warehouse.name),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedWarehouseId = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Se recibirán todas las cantidades ordenadas.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: selectedWarehouseId == null
-                  ? null
-                  : () => Navigator.of(context).pop(true),
-              child: const Text('Recibir'),
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const Text('Recibir Mercancía'),
+        content: Text(
+          '¿Confirmas que deseas recibir la mercancía de la orden #${_order!.id.substring(0, 8)}?\n\n'
+          'Los productos se agregarán a los almacenes especificados al crear la orden.',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Recibir'),
+          ),
+        ],
       ),
     );
 
-    if (confirmed != true || selectedWarehouseId == null) return;
+    if (confirmed != true) return;
 
     setState(() => _isReceiving = true);
 
     try {
-      // Crear mapa de cantidades recibidas (todas las cantidades ordenadas)
-      final receivedQuantities = <String, double>{};
-      for (var item in _order!.items) {
-        receivedQuantities[item.id] = item.qtyOrdered;
-      }
-
-      await _purchaseOrderService.receive(
-        widget.orderId,
-        warehouseId: selectedWarehouseId!,
-        receivedQuantities: receivedQuantities,
-      );
+      // El backend usa las allocations guardadas en memoria desde create()
+      await _purchaseOrderService.receive(widget.orderId);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -217,10 +146,13 @@ class _PurchaseOrderDetailScreenState extends State<PurchaseOrderDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isReceiving = false);
+        
+        final errorMessage = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al recibir mercancía: $e'),
+            content: Text('Error: $errorMessage'),
             backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

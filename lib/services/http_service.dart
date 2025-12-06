@@ -126,7 +126,7 @@ class HttpService {
     final response = await http.post(
       Uri.parse('$baseUrl$endpoint'),
       headers: _getHeaders(includeAuth: includeAuth),
-      body: body != null ? jsonEncode(body) : null,
+      body: body != null && body.isNotEmpty ? jsonEncode(body) : jsonEncode({}),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
